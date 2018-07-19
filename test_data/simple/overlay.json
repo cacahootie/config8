@@ -1,0 +1,8 @@
+{
+    "a": "this is an override",
+    "b": ["item3", "item4"],
+    "d": {
+        "2": "2",
+        "3": "three"
+    }
+}

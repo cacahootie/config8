@@ -1,0 +1,11 @@
+{
+    "a": "the first letter",
+    "b": [
+        "item1",
+        "item2"],
+    "c": 32,
+    "d": {
+        "1": "one",
+        "2": "two"
+    }
+}
