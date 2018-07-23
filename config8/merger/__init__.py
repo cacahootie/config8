@@ -24,6 +24,10 @@ def path_obj(path, obj):
         base = path.pop(0)
         return path_obj(path, obj[base])
 
+def resolve_urlfriendly(path, obj):
+    path = '#/{}'.format(path.replace('.','/'))
+    return resolve(path, obj)
+
 def resolve(path, obj=None):
     if isinstance(path, dict) and '$ref' in path:
         path = path['$ref']
@@ -36,6 +40,12 @@ def resolve(path, obj=None):
         return path_obj('#{}'.format(objpath), wholeobj)
     else:
         return _resolve_file(path)
+
+def comp_web(target_path, jref=None):
+    result = comp(target_path)
+    if jref is not None:
+        return resolve_urlfriendly(jref, result)
+    return result
 
 def comp(target_path):
     if isinstance(target_path, str):
@@ -56,7 +66,7 @@ def merge(base, overlay):
 
     for k, v in overlay.items():
         if k in lock_names:
-            print("{} is locked".format(k))
+            continue
         elif isinstance(v, dict) and '$ref' in v:
             base[k] = resolve(v['$ref'], overlay)
         elif isinstance(v, dict) and '@parent' in v:
