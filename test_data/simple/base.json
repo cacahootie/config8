@@ -6,6 +6,9 @@
     "c": 32,
     "d": {
         "1": "one",
-        "2": "two"
-    }
+        "2": "two",
+        "@lock_names": ["2"]
+    },
+    "immortal": "lives forever",
+    "@lock_names": ["immortal"]
 }

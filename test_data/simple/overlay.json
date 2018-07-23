@@ -1,8 +1,16 @@
 {
+    "@parent": {"$ref": "test_data/simple/base.json"},
     "a": "this is an override",
     "b": ["item3", "item4"],
     "d": {
         "2": "2",
         "3": "three"
-    }
+    },
+    "e": {"$ref": "test_data/simple/base.json#/a"},
+    "names": {
+        "@parent": {"$ref": "test_data/simple/subbase.json"},
+        "jimmy": "farnsworth"
+    },
+    "copy-a": {"$ref": "#/a"},
+    "immortal": "I have risen"
 }
