@@ -42,6 +42,11 @@ def resolve(path, obj=None):
         return _resolve_file(path)
 
 def comp_web(target_path, jref=None):
+    if '#' in target_path:
+        target_path, jref = target_path.split('#')
+        jref = '#{}'.format(jref)
+        base = comp(target_path)
+        return resolve(jref, base)
     result = comp(target_path)
     if jref is not None:
         return resolve_urlfriendly(jref, result)
