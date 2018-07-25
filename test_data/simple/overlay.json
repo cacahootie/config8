@@ -11,6 +11,7 @@
         "@parent": {"$ref": "test_data/simple/subbase.json"},
         "jimmy": "farnsworth"
     },
+    "names_sub": {"$ref": "test_data/simple/subbase.json"},
     "copy-a": {"$ref": "#/a"},
     "immortal": "I have risen"
 }
