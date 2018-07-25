@@ -133,7 +133,6 @@ def test_resolve_document(cursor):
     assert '@parent' in r
     assert 'e' in r
 
-#@pytest.mark.skip(reason='b')
 def test_resolve_obj(cursor):
     """Can resolve a single-level path in an object."""
     r = resolve(cursor, 't_obj#/a')
@@ -141,7 +140,6 @@ def test_resolve_obj(cursor):
     assert isinstance(r, dict)
     assert 'b' in r
 
-#@pytest.mark.skip(reason='b')
 def test_resolve_obj_multi(cursor):
     """Can resolve a single-level path in an object."""
     r = resolve(cursor, 't_obj#/a/b')

@@ -12,41 +12,43 @@ CREATE TABLE documents (
 );
 
 
-create or replace function parse_reference(jref jsonb)
-returns text language sql as $$
+CREATE OR REPLACE FUNCTION parse_reference(jref jsonb)
+RETURNS text LANGUAGE sql AS $$
     SELECT CAST (
         (SELECT jref ->> '$ref')
-        AS TEXT
+        AS text
     )
 $$;
 
-create or replace function reference_get_path(jref text)
-returns text language sql as $$
+CREATE OR REPLACE FUNCTION reference_get_path(jref text)
+RETURNS text LANGUAGE sql AS $$
     SELECT 
-        case
-            when position('#/' in jref) = 1 then null
-            when position('#/' in jref) > 0 then substring(jref from 1 for position('#/' in jref) - 1)
-            else jref
-        end
+        CASE
+            WHEN position('#/' in jref) = 1
+                then null
+            WHEN position('#/' in jref) > 0
+                then substring(jref from 1 for position('#/' in jref) - 1)
+            ELSE jref
+        END
 $$;
 
-create or replace function reference_get_ref(jref text)
-returns text language sql as $$
+CREATE OR REPLACE FUNCTION reference_get_ref(jref text)
+RETURNS text LANGUAGE sql AS $$
     SELECT
-        case
-            when position('#/' in jref) > 0 
-                then substring(jref from position('#/' in jref))
-            else null
-        end
+        CASE
+            WHEN position('#/' in jref) > 0
+                THEN substring(jref from position('#/' in jref))
+            ELSE NULL
+        END
 $$;
 
-create or replace function jref_to_jpath(jref text)
-returns text[] language sql as $$
+CREATE OR REPLACE FUNCTION jref_to_jpath(jref text)
+RETURNS text[] LANGUAGE sql AS $$
     SELECT (regexp_split_to_array(jref, '/'))[2:];
 $$;
 
-create or replace function jsonb_reference(jref text)
-returns jsonb language sql as $$
+CREATE OR REPLACE FUNCTION jsonb_reference(jref text)
+RETURNS jsonb LANGUAGE sql as $$
     SELECT
         CASE
             WHEN reference_get_ref(jref) NOTNULL
@@ -64,58 +66,47 @@ returns jsonb language sql as $$
         END
 $$;
 
-/*
-create or replace function jsonb_reference(jpath text, jref text[])
-returns jsonb language sql as $$
-    SELECT
-        CASE
-            WHEN reference_get_ref(jref) NOTNULL
-                AND reference_get_path(jref) NOTNULL
-                THEN (
-                    SELECT document -> reference_get_ref(jref) FROM documents
-                    WHERE name=reference_get_path(jref)
-                )
-            ELSE (
-                SELECT document FROM documents 
-                WHERE name=reference_get_path(jref)
-            )
-        END
-$$;*/
-
-create or replace function jsonb_reference(jref jsonb)
-returns jsonb language sql as $$
+CREATE OR REPLACE FUNCTION jsonb_reference(jref jsonb)
+RETURNS jsonb LANGUAGE sql as $$
     SELECT document FROM documents WHERE name=(
         parse_reference(jref)
     )
 $$;
 
-create or replace function jsonb_compile(target jsonb)
-returns jsonb language sql as $$
-    select jsonb_object_agg(
+CREATE OR REPLACE FUNCTION jsonb_compile(target jsonb)
+RETURNS jsonb LANGUAGE sql as $$
+    SELECT jsonb_object_agg(
             key,
-            case
-                when jsonb_typeof(val) <> 'object' then val
-                when val ? '$ref' then (jsonb_reference(val))
-                else val
-            end
+            CASE
+                WHEN jsonb_typeof(val) <> 'object'
+                    THEN val
+                WHEN val ? '$ref'
+                    THEN (jsonb_reference(val))
+                ELSE val
+            END
         )
-    from jsonb_each(target) e1(key, val)
+    FROM jsonb_each(target) e1(key, val)
 $$;
 
-create or replace function jsonb_merge_recurse(orig jsonb, delta jsonb)
-returns jsonb language sql as $$
-    select
+CREATE OR REPLACE FUNCTION jsonb_merge_recurse(orig jsonb, delta jsonb)
+RETURNS jsonb LANGUAGE sql as $$
+    SELECT
         jsonb_object_agg(
             coalesce(keyOrig, keyDelta),
-            case
-                when valOrig isnull then valDelta
-                when valDelta isnull then valOrig
-                when (jsonb_typeof(valOrig) = 'array') then valOrig || valDelta
-                when (jsonb_typeof(valOrig) <> 'object' or jsonb_typeof(valDelta) <> 'object') then valDelta
-                else jsonb_merge_recurse(valOrig, valDelta)
-            end
+            CASE
+                WHEN valOrig isnull
+                    THEN valDelta
+                WHEN valDelta isnull
+                    THEN valOrig
+                WHEN (jsonb_typeof(valOrig) = 'array')
+                    THEN valOrig || valDelta
+                WHEN (jsonb_typeof(valOrig) <> 'object' OR jsonb_typeof(valDelta) <> 'object')
+                    THEN valDelta
+                ELSE jsonb_merge_recurse(valOrig, valDelta)
+            END
         )
-    from jsonb_each(orig) e1(keyOrig, valOrig)
-    full join jsonb_each(delta) e2(keyDelta, valDelta) on keyOrig = keyDelta
+    FROM jsonb_each(orig) e1(keyOrig, valOrig)
+    FULL JOIN jsonb_each(delta) e2(keyDelta, valDelta)
+        ON keyOrig = keyDelta
 $$;
 
