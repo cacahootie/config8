@@ -1,7 +1,11 @@
 
 test:
+	@make update-schema
+	@pytest
+
+test-python:
 	@echo 'MAKE: Running tests'
-	@pytest -v
+	@pytest -v config8/merger/test_merger.py
 	@echo 'MAKE: Complete'
 
 test-sql:

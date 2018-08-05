@@ -52,34 +52,39 @@ def comp_web(target_path, jref=None):
         return resolve_urlfriendly(jref, result)
     return result
 
+
+def _comp_obj(target):
+    parent = target.pop('@parent') if '@parent' in target else None
+    if parent is not None:
+        parent = resolve(parent)
+        target = merge(parent, target, True)
+    for k, v in target.items():
+        if isinstance(v, dict):
+            if '@parent' in v:
+                target[k] = _comp_obj(v)
+            elif '$ref' in v:
+                target[k] = resolve(v['$ref'], target)
+    return target
+
+
 def comp(target_path):
     if isinstance(target_path, str):
         target = resolve(target_path)
     else:
         target = target_path
-    parent = target.pop('@parent') if '@parent' in target else None
-    if parent is not None:
-        parent = resolve(parent)
-        return merge(parent, target)
-    return target
+    return _comp_obj(target)
 
-def merge(base, overlay):
-    try:
-        lock_names = set(base.pop('@lock_names'))
-    except KeyError:
-        lock_names = []
-
+def merge(base, overlay, lockable=False):
+    lock = []
+    if lockable and '@lock_names' in base:
+        lock = set(base.pop('@lock_names'))
     for k, v in overlay.items():
-        if k in lock_names:
+        if k in lock:
             continue
-        elif isinstance(v, dict) and '$ref' in v:
-            base[k] = resolve(v['$ref'], overlay)
-        elif isinstance(v, dict) and '@parent' in v:
-            base[k] = comp(overlay[k])
         elif (k in base and isinstance(base[k], list)) and isinstance(overlay[k], list):
             base[k] = base[k] + overlay[k]
         elif (k in base and isinstance(base[k], dict)) and isinstance(overlay[k], dict):
-            merge(base[k], overlay[k])
+            merge(base[k], overlay[k], lockable)
         else:
             base[k] = overlay[k]
     return base

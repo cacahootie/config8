@@ -1,5 +1,7 @@
 
-from pprint import pprint
+from pprintpp import pprint
+
+import pytest
 
 from config8.merger import merge, resolve, comp, path_obj
 
@@ -41,14 +43,38 @@ def test_path_obj():
     r = path_obj('#/a/b/c/1', t_obj)
     assert r == 2
 
-def test_compile():
-    """Compiler can compile a file from a filename."""
+def test_compile_references():
     result = comp(simple.format('overlay'))
     pprint(result)
-    _validate_overlay(result)
+    assert result['e'] == 'the first letter'
+    assert result['copy-a'] == 'this is an override'
+
+def test_compile_parent():
+    result = comp(simple.format('overlay'))
+    pprint(result)
     assert "@parent" not in result
+    _validate_overlay(result)
+
+def test_compile_parent_nested():
+    result = comp(simple.format('overlay'))
+    pprint(result)
+    assert "@parent" not in result['names']
     assert result['names']['bob'] == 'old'
     assert result['names']['jimmy'] == 'farnsworth'
+
+def test_compile_lock_names():
+    """Merge function respects @lock_names."""
+    result = comp(simple.format('overlay'))
+    pprint(result)
+    assert '@lock_names' not in result
+    assert result['immortal'] == 'lives forever'
+
+def test_compile_lock_names_nested():
+    """Merge function respects nested @lock_names."""
+    result = comp(simple.format('overlay'))
+    pprint(result)
+    assert '@lock_names' not in result['d']
+    assert result['d']['2'] == 'two'
 
 base = resolve(simple.format('base'))
 overlay = resolve(simple.format('overlay'))
@@ -58,14 +84,9 @@ def test_merger():
     """Merge function can deep merge two dicts."""
     _validate_overlay(merge_result)
     assert "@parent" in merge_result
-
-def test_merger_lock_names():
-    """Merge function respects @lock_names."""
-    assert merge_result['immortal'] == 'lives forever'
-
-def test_merger_lock_names_nested():
-    """Merge function respects nested @lock_names."""
-    assert merge_result['d']['2'] == 'two'
+    assert '$ref' in merge_result['e']
+    assert '$ref' in merge_result['copy-a']
+    assert merge_result['immortal'] == 'I have risen'
 
 def _validate_overlay(result):
     """Verify the merged output of the base and overlay."""
@@ -73,5 +94,4 @@ def _validate_overlay(result):
     assert result['d']["3"] == 'three'
     assert len(result['b']) == 4
     assert result['b'][3] == 'item4'
-    assert result['e'] == 'the first letter'
-    assert result['copy-a'] == 'this is an override'
+    

@@ -73,40 +73,50 @@ RETURNS jsonb LANGUAGE sql as $$
     )
 $$;
 
+CREATE OR REPLACE FUNCTION jsonb_reference(jref jsonb, base jsonb)
+RETURNS jsonb LANGUAGE sql as $$
+    SELECT base #>
+        jref_to_jpath(reference_get_ref(parse_reference(jref)))
+$$;
+
 CREATE OR REPLACE FUNCTION jsonb_compile(target jsonb)
 RETURNS jsonb LANGUAGE sql as $$
-    SELECT jsonb_object_agg(
-            key,
-            CASE
-                WHEN jsonb_typeof(val) <> 'object'
-                    THEN val
-                WHEN val ? '$ref'
-                    THEN (jsonb_reference(val))
-                ELSE val
-            END
-        )
+    SELECT 
+
+                jsonb_object_agg(
+                    key,
+                    CASE
+                        WHEN jsonb_typeof(val) <> 'object'
+                            THEN val
+                        WHEN val ? '$ref'
+                            THEN (jsonb_reference(val))
+                        ELSE val
+                    END
+                )
     FROM jsonb_each(target) e1(key, val)
 $$;
 
-CREATE OR REPLACE FUNCTION jsonb_merge_recurse(orig jsonb, delta jsonb)
+CREATE OR REPLACE FUNCTION jsonb_merge_recurse(base jsonb, overlay_ jsonb)
 RETURNS jsonb LANGUAGE sql as $$
     SELECT
         jsonb_object_agg(
-            coalesce(keyOrig, keyDelta),
+            coalesce(keyBase, keyOverlay),
             CASE
-                WHEN valOrig isnull
-                    THEN valDelta
-                WHEN valDelta isnull
-                    THEN valOrig
-                WHEN (jsonb_typeof(valOrig) = 'array')
-                    THEN valOrig || valDelta
-                WHEN (jsonb_typeof(valOrig) <> 'object' OR jsonb_typeof(valDelta) <> 'object')
-                    THEN valDelta
-                ELSE jsonb_merge_recurse(valOrig, valDelta)
+                WHEN valBase isnull
+                    THEN valOverlay
+                WHEN valOverlay isnull
+                    THEN valBase
+                WHEN (jsonb_typeof(valOverlay) <> 'object') AND (valOverlay ? '$ref')
+                    THEN jsonb_reference(valOverlay, overlay_)
+                WHEN (jsonb_typeof(valBase) = 'array')
+                    THEN valBase || valOverlay
+                WHEN (jsonb_typeof(valBase) <> 'object' OR jsonb_typeof(valOverlay) <> 'object')
+                    THEN valOverlay
+                ELSE jsonb_merge_recurse(valBase, valOverlay)
             END
         )
-    FROM jsonb_each(orig) e1(keyOrig, valOrig)
-    FULL JOIN jsonb_each(delta) e2(keyDelta, valDelta)
-        ON keyOrig = keyDelta
+    FROM jsonb_each(base) e1(keyBase, valBase)
+    FULL JOIN jsonb_each(overlay_) e2(keyOverlay, valOverlay)
+        ON keyBase = keyOverlay
 $$;
 
